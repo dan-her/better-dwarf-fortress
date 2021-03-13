@@ -15,42 +15,83 @@ struct entity {
     bool mover;
 };
 
-int n = 5;
+int n = 10;
+int nboys = 5;
 struct entity **entities;
+int maxx = 100;
+int maxy = 100;
+
+bool is_valid_spot(int x, int y) {
+    return x < maxx && x > -1 && y < maxy && y > -1;
+}
+
+bool is_taken(int x1, int y1, int j){
+    for (int i = 0; i < n; ++i) {
+        if (j == i) continue;
+        if (entities[i]->x == x1 && entities[i]->y == y1) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void *update_dwarfs() {
-    while(true)
-	{	
+    while(true) {	
         clear();
         for (int i = 0; i < n; ++i) {
             struct entity *en = entities[i];
-            switch(rand()%4)
-            {	case 0:
-                    mvaddch(en->y, --en->x, en->c);
-                    break;
-                case 1:
-                    mvaddch(en->y, ++en->x, en->c);
-                    break;
-                case 3:
-                    mvaddch(--en->y, en->x, en->c);
-                    break;
-                case 2:
-                    mvaddch(++en->y, en->x, en->c);
-                    break;	
+            if (en->mover) {
+                int dirx=0, diry=0;
+                switch(rand()%4)
+                {	case 0:
+                        dirx = -1;
+                        break;
+                    case 1:
+                        dirx = 1;
+                        break;
+                    case 3:
+                        diry = 1;
+                        break;
+                    case 2:
+                        diry = -1;
+                        break;
+                }
+                if (is_valid_spot(en->x+dirx, en->y+diry) && !is_taken(en->x+dirx, en->y+diry, i)) {
+                    en->x += dirx;
+                    en->y += diry;
+                }
             }
+            mvaddch(en->y, en->x, en->c);
         }
         refresh();
-        usleep(500000);
+        usleep(250000);
 	}
+}
+
+void initialize_the_boys() {
+    for (int i = 0; i < nboys; ++i) {
+        entities[i] = (struct entity *)malloc(sizeof(struct entity));
+        entities[i]->x = rand()%maxx;
+        entities[i]->y = rand()%maxy;
+        entities[i]->c = 'd';
+        entities[i]->mover = true;
+    }
+    for (int i = nboys; i < n; ++i) {
+        entities[i] = (struct entity *)malloc(sizeof(struct entity));
+        entities[i]->x = rand()%maxx;
+        entities[i]->y = rand()%maxy;
+        entities[i]->c = 'a';
+        entities[i]->mover = false;
+    }
 }
 
 
 int main(int argc, char *argv[])
 {	WINDOW *my_win;
 	int startx, starty, width, height;
-	int ch;
+    srand(time(0));
 
-	initscr();			/* Start curses mode 		*/
+	my_win = initscr();			/* Start curses mode 		*/
 	cbreak();			/* Line buffering disabled, Pass on
 					 * everty thing to me 		*/
 	keypad(stdscr, TRUE);		/* I need that nifty F1 	*/
@@ -64,14 +105,8 @@ int main(int argc, char *argv[])
 	refresh();
 
     entities = malloc(n*sizeof(struct entity *));
-    
-    for (int i = 0; i < n; ++i) {
-        entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = startx;
-        entities[i]->y = starty;
-        entities[i]->c = 'd';
-        entities[i]->mover = false;
-    }
+    getmaxyx(my_win, maxy, maxx);
+    initialize_the_boys(startx, starty);
 
     pthread_t dwarf;
 
@@ -81,38 +116,4 @@ int main(int argc, char *argv[])
 		
 	endwin();			/* End curses mode		  */
 	return 0;
-}
-
-WINDOW *create_newwin(int height, int width, int starty, int startx)
-{	WINDOW *local_win;
-
-	local_win = newwin(height, width, starty, startx);
-	box(local_win, 0 , 0);		/* 0, 0 gives default characters 
-					 * for the vertical and horizontal
-					 * lines			*/
-	wrefresh(local_win);		/* Show that box 		*/
-
-	return local_win;
-}
-
-void destroy_win(WINDOW *local_win)
-{	
-	/* box(local_win, ' ', ' '); : This won't produce the desired
-	 * result of erasing the window. It will leave it's four corners 
-	 * and so an ugly remnant of window. 
-	 */
-	wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-	/* The parameters taken are 
-	 * 1. win: the window on which to operate
-	 * 2. ls: character to be used for the left side of the window 
-	 * 3. rs: character to be used for the right side of the window 
-	 * 4. ts: character to be used for the top side of the window 
-	 * 5. bs: character to be used for the bottom side of the window 
-	 * 6. tl: character to be used for the top left corner of the window 
-	 * 7. tr: character to be used for the top right corner of the window 
-	 * 8. bl: character to be used for the bottom left corner of the window 
-	 * 9. br: character to be used for the bottom right corner of the window
-	 */
-	wrefresh(local_win);
-	delwin(local_win);
 }
