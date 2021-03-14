@@ -20,6 +20,7 @@ int nboys = 5;
 struct entity **entities;
 int maxx = 100;
 int maxy = 100;
+int kgdug = 0; // how many times a dwarf has broken a rock
 
 bool is_valid_spot(int x, int y) {
     return x < maxx && x > -1 && y < maxy && y > -1;
@@ -71,14 +72,14 @@ void *update_dwarfs(void *in) {
 }
 
 void initialize_the_boys() {
-    for (int i = 0; i < nboys; ++i) {
+    for (int i = 0; i < nboys; ++i) { // dwarves
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
         entities[i]->x = rand()%maxx;
         entities[i]->y = rand()%maxy;
         entities[i]->c = 'd';
         entities[i]->mover = true;
     }
-    for (int i = nboys; i < n; ++i) {
+    for (int i = nboys; i < n; ++i) { // apples
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
         entities[i]->x = rand()%maxx;
         entities[i]->y = rand()%maxy;
@@ -98,11 +99,13 @@ int main(int argc, char *argv[])
 	int dwarfpop = 0; // these check if we've popped up any number of flags
 	int applepop = 0;
 	int kgpop = 0; // technically unused
+	int boyscount = 0;
 
 	printw("Dwarf Game");
-	printw("\n\n\n\n");
-	printw(" d - current dwarf count\n\n");
+	printw("                                                              \n\n\n\n"); // leave a bunch of space for messages
 	printw(" a - make an apple\n\n");
+	printw(" b - make a new dwarf\n\n");
+	printw(" d - current dwarf count\n\n");
 	printw(" k - kg of rock moved\n\n");
 	refresh();			/* Print it on to the real screen */
 	int startx, starty, width, height;
@@ -126,8 +129,67 @@ int main(int argc, char *argv[])
 
     pthread_create(&dwarf, NULL, update_dwarfs, win);
 
-    while (getch() != KEY_F(1));
+    while ((ch = getch()) != KEY_F(1)) {
+		switch(ch) {
+			case 'a': // purchase apples, which allow dwarves to duplicate
+				move(1, 25);
+				printw("A new apple has been created.");
+				n++;
+				entities = realloc(entities, n*sizeof(struct entity *));
+				entities[n-1] =  (struct entity *)malloc(sizeof(struct entity));
+ 		        entities[n-1]->x = rand()%maxx;
+		        entities[n-1]->y = rand()%maxy;
+        		entities[n-1]->c = 'a';
+        		entities[n-1]->mover = false;
+				refresh();
+        		usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                             ");
+				refresh();
+				break;
+			case 'b': // purchase new dwarves
+				move(1, 25);
+				printw("A new dwarf has been created.");
+				n++;
+				entities = realloc(entities, n*sizeof(struct entity *));
+				entities[n-1] =  (struct entity *)malloc(sizeof(struct entity));
+ 		        entities[n-1]->x = rand()%maxx;
+		        entities[n-1]->y = rand()%maxy;
+        		entities[n-1]->c = 'd';
+        		entities[n-1]->mover = true;
+				refresh();
+        		usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                             ");
+				refresh();
+				break;
+			case 'd': // count your dwarves
+				for (int i = 0; i < n; i++) {
+					if (entities[i]->c == 'd') {
+						boyscount++;
+					}
+				}
+				move(1, 25);
+				printw("There are currently %d dwarves.", boyscount);
+				boyscount = 0; // reset boyscount so we don't count more dwarves than there are
+				refresh();
+        		usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                                ");
+				refresh();
+				break;
+			case 'k': // see how many kg of stone your dwarves have moved in their mining adventures
+				move(1, 25);
+				printw("The dwarves have broken a total of %dkg of rock.", (kgdug*5));
+				refresh();
+        		usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                                                  ");
+				refresh();
+				break;
+		}
+	};
 		
-	endwin();			/* End curses mode		  */
+	endwin();
 	return 0;
 }
