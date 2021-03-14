@@ -6,8 +6,10 @@
 
 void spawn_demon();
 void spawn_rocks();
+void spawn_boy(int);
 void delete_boy(int index);
 void find_target();
+void move_towards_target(int index, int *dirx, int *diry);
 
 struct entity {
     int x;
@@ -15,6 +17,7 @@ struct entity {
     char c;
     bool mover;
     int hang_time; // assuming the number of demons > 1
+	int target;
 };
 
 int n = 260;
@@ -24,7 +27,7 @@ int maxx = 100;
 int maxy = 100;
 int kigdug = 0; // how many times a dwarf has broken a rock
 bool demoned = false;
-int target; // assuming the number of demons = 1
+//int target; // assuming the number of demons = 1
 
 bool is_valid_spot(int x, int y) {
     return x < maxx-1 && x > 0 && y < maxy-1 && y > 0;
@@ -34,14 +37,17 @@ bool is_taken(int x1, int y1, int j){
     for (int i = 0; i < n; ++i) {
         if (j == i) continue;
 		if (entities[i]-> c == '#' && entities[j]->c == 'H') continue;
+		if (entities[i]-> c == 'a' && entities[j]->c == 'H') continue;
         if (entities[i]->x == x1 && entities[i]->y == y1) {
-			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd')) {
-				delete_boy(i);
-				if (entities[j]->c == 'd') {
+			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd') || (entities[j]->c == 'd' && entities[i]->c == 'a')) {
+				entities[j]->target = -1;
+				if (entities[j]->c == 'd' && entities[i]->c == 'a') {
 					kigdug++;
-				} else {
-					target = -1;
-				}	
+					if (entities[i]->c == 'a') {
+						spawn_boy(i);
+					}
+				} 
+				delete_boy(i);
 				return false;
 			} else { // else is not necessary here but it's nicer 
 	            return true; 
@@ -60,6 +66,19 @@ void delete_boy(int index) {
 	entities = realloc(entities, sizeof(struct entity *)*n);
 }
 
+bool nearby_goodies(int x, int y, int j) {
+	for (int i = 0; i < n; ++i) {
+		if (entities[i]->c != '#' && entities[i]->c != 'a') continue;
+		int x1 = entities[i]->x - x;
+		int y1 = entities[i]->y - y;
+		if (x1*x1+y1*y1 <= 5) {
+			entities[j]->target = i;
+			return true;
+		}
+	}
+	return false;
+}
+
 void *update_dwarfs(void *in) {
     while(true) {	
 		WINDOW *win = (WINDOW *)in;
@@ -68,24 +87,32 @@ void *update_dwarfs(void *in) {
             struct entity *en = entities[i];
             if (en->mover) {
                 int dirx=0, diry=0;
-                if (en->c == 'H') {
-					if (target == -1) find_target();
-					dirx = en->x >= entities[target]->x ? (en->x == entities[target]->x ? 0 : -1) : 1;
-					diry = en->y >= entities[target]->y ? (en->y == entities[target]->y ? 0 : -1) : 1;
+				if (en->target != -1) {
+					move_towards_target(i, &dirx, &diry);
 				} else {
-					switch(rand()%4){
-						case 0:
-							dirx = -1;
-							break;
-						case 1:
-							dirx = 1;
-							break;
-						case 3:
-							diry = 1;
-							break;
-						case 2:
-							diry = -1;
-							break;
+					if (en->c == 'H') {
+						find_target(i);
+						move_towards_target(i, &dirx, &diry);
+					} else {
+						bool t = nearby_goodies(entities[i]->x, entities[i]->y, i);
+						if (t) {
+							move_towards_target(i, &dirx, &diry);
+						} else {
+							switch(rand()%4){
+								case 0:
+									dirx = -1;
+									break;
+								case 1:
+									dirx = 1;
+									break;
+								case 3:
+									diry = 1;
+									break;
+								case 2:
+									diry = -1;
+									break;
+							}
+						}
 					}
 				}
                 if (is_valid_spot(en->x+dirx, en->y+diry) && !is_taken(en->x+dirx, en->y+diry, i)) {
@@ -115,16 +142,23 @@ void *update_dwarfs(void *in) {
 	}
 }
 
-void find_target() {
+void move_towards_target(int index, int *dirx, int *diry) {
+	struct entity *en = entities[index];
+	if (en->target == -1) return;
+	*dirx = en->x >= entities[en->target]->x ? (en->x == entities[en->target]->x ? 0 : -1) : 1;
+	*diry = en->y >= entities[en->target]->y ? (en->y == entities[en->target]->y ? 0 : -1) : 1;
+} 
+
+void find_target(int j) {
 	for (int i = 0; i < n; ++i) {
 		if (entities[i]->c == 'd') {
-			target = i;
+			entities[j]->target = i;
 		}
 	}
 }
 
 void spawn_demon() {
-	find_target();
+	find_target(n-1);
     int x=0, y=0;
     switch (rand()%4) {
         case 0:
@@ -157,35 +191,48 @@ void spawn_rocks() {
 		n++;
     	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
     	entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
-		entities[n-1]->x = rand()%(maxx-1)+1;
-    	entities[n-1]->y = rand()%(maxy-1)+1;
+		entities[n-1]->x = rand()%(maxx-2)+1;
+    	entities[n-1]->y = rand()%(maxy-2)+1;
     	entities[n-1]->c = '#';
     	entities[n-1]->mover = false;
 		entities[n-1]->hang_time = 0;
 	}
 }
 
+void spawn_boy(int i) {
+	n++;
+	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+	entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
+	entities[n-1]->x = entities[i]->x;
+	entities[n-1]->y = entities[i]->y;
+	entities[n-1]->c = 'd';
+	entities[n-1]->mover = true;
+	entities[n-1]->hang_time = 0;
+	entities[i]->target = -1;
+}
+
 void initialize_the_boys() {
     for (int i = 0; i < nboys; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = rand()%(maxx-1)+1;
-        entities[i]->y = rand()%(maxy-1)+1;
+        entities[i]->x = rand()%(maxx-2)+1;
+        entities[i]->y = rand()%(maxy-2)+1;
         entities[i]->c = 'd';
         entities[i]->mover = true;
         entities[i]->hang_time = 0;
+		entities[i]->target = -1;
     }
     for (int i = nboys; i < 10; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = rand()%(maxx-1)+1;
-        entities[i]->y = rand()%(maxy-1)+1;
+        entities[i]->x = rand()%(maxx-2)+1;
+        entities[i]->y = rand()%(maxy-2)+1;
         entities[i]->c = 'a';
         entities[i]->mover = false;
         entities[i]->hang_time = 0;
     }
 	for (int i = 10; i < n; ++i){ // rocks
 		entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = rand()%(maxx-1)+1;
-        entities[i]->y = rand()%(maxy-1)+1;
+        entities[i]->x = rand()%(maxx-2)+1;
+        entities[i]->y = rand()%(maxy-2)+1;
         entities[i]->c = '#';
         entities[i]->mover = false;
         entities[i]->hang_time = 0;
