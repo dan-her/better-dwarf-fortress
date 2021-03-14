@@ -7,7 +7,7 @@
 void spawn_demon();
 void spawn_rocks();
 void spawn_dragon();
-void spawn_boy(int);
+void spawn_dwarf(int);
 void delete_boy(int index);
 void find_target();
 void move_towards_target(int index, int *dirx, int *diry);
@@ -48,10 +48,10 @@ bool is_taken(int x1, int y1, int j){
 				entities[j]->target = NULL;
 				if (entities[j]->c == 'd' && entities[i]->c == 'a') {
 					if (entities[i]->c == 'a') {
-						spawn_boy(i);
+						spawn_dwarf(i);
 					}
 				} 
-				if (entities[j]->c == 'd' && entities[i]->c == '#') {
+				if ((entities[j]->c == 'd' && entities[i]->c == '#')){
 					kigdug++;
 				}
 				delete_boy(i);
@@ -65,6 +65,11 @@ bool is_taken(int x1, int y1, int j){
 }
 
 void delete_boy(int index) {
+	for (int i = 0; i < n; i++) {
+		if (entities[i]->target == entities[index]) {
+			entities[i]->target = NULL;
+		}
+	}
 	n--;
 	free(entities[index]);
 	for (int i = index; i < n; ++i) {
@@ -74,16 +79,26 @@ void delete_boy(int index) {
 }
 
 bool nearby_goodies(int x, int y, int j) {
+	int mindex = -1;
+	int min = 999999;
 	for (int i = 0; i < n; ++i) {
 		if (entities[i]->c != '#' && entities[i]->c != 'a') continue;
 		int x1 = entities[i]->x - x;
 		int y1 = entities[i]->y - y;
-		if (x1*x1+y1*y1 <= 10) {
-			entities[j]->target = entities[i];
-			return true;
+		int dist = x1*x1+y1*y1;
+		if (1) {
+			if (dist <= min) {
+				mindex = i;
+				min = dist;
+			}
 		}
 	}
-	return false;
+	if (mindex == -1) {
+		return false;
+	} else {
+		entities[j]->target = entities[mindex];
+		return true;
+	}
 }
 
 void *update_dwarfs(void *in) {
@@ -99,6 +114,7 @@ void *update_dwarfs(void *in) {
     		entities[n-1]->c = 'd';
     		entities[n-1]->mover = true;
 			entities[n-1]->hang_time = 0;
+			entities[n-1]->target = entities[0];
 			dwarfspawn = false;
 		}
 		if (eggspawn) {
@@ -216,7 +232,7 @@ void *update_dwarfs(void *in) {
 		if (egg_time == 3) {
 			spawn_dragon();
 		}
-	  	box(win, 0, 0);	
+	  	//box(win, 0, 0);	
         wrefresh(win);
         usleep(250000);
 	}
@@ -299,7 +315,7 @@ void spawn_dragon() {
 	}
 }
 
-void spawn_boy(int i) {
+void spawn_dwarf(int i) {
 	n++;
 	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
 	entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
@@ -308,7 +324,7 @@ void spawn_boy(int i) {
 	entities[n-1]->c = 'd';
 	entities[n-1]->mover = true;
 	entities[n-1]->hang_time = 0;
-	entities[i]->target = NULL;
+	nearby_goodies(entities[n-1]->x, entities[n-1]->y, n-1);
 }
 
 void initialize_the_boys() {
