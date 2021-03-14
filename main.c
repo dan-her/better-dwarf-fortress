@@ -7,13 +7,14 @@
 void spawn_demon();
 void spawn_rocks();
 void delete_boy(int index);
+void find_target();
 
 struct entity {
     int x;
     int y;
     char c;
     bool mover;
-    int hang_time;
+    int hang_time; // assuming the number of demons > 1
 };
 
 int n = 260;
@@ -23,6 +24,7 @@ int maxx = 100;
 int maxy = 100;
 int kigdug = 0; // how many times a dwarf has broken a rock
 bool demoned = false;
+int target; // assuming the number of demons = 1
 
 bool is_valid_spot(int x, int y) {
     return x < maxx-1 && x > 0 && y < maxy-1 && y > 0;
@@ -31,12 +33,15 @@ bool is_valid_spot(int x, int y) {
 bool is_taken(int x1, int y1, int j){
     for (int i = 0; i < n; ++i) {
         if (j == i) continue;
+		if (entities[i]-> c == '#' && entities[j]->c == 'H') continue;
         if (entities[i]->x == x1 && entities[i]->y == y1) {
 			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd')) {
 				delete_boy(i);
 				if (entities[j]->c == 'd') {
 					kigdug++;
-				}				
+				} else {
+					target = -1;
+				}	
 				return false;
 			} else { // else is not necessary here but it's nicer 
 	            return true; 
@@ -63,20 +68,26 @@ void *update_dwarfs(void *in) {
             struct entity *en = entities[i];
             if (en->mover) {
                 int dirx=0, diry=0;
-                switch(rand()%4)
-                {	case 0:
-                        dirx = -1;
-                        break;
-                    case 1:
-                        dirx = 1;
-                        break;
-                    case 3:
-                        diry = 1;
-                        break;
-                    case 2:
-                        diry = -1;
-                        break;
-                }
+                if (en->c == 'H') {
+					if (target == -1) find_target();
+					dirx = en->x >= entities[target]->x ? (en->x == entities[target]->x ? 0 : -1) : 1;
+					diry = en->y >= entities[target]->y ? (en->y == entities[target]->y ? 0 : -1) : 1;
+				} else {
+					switch(rand()%4){
+						case 0:
+							dirx = -1;
+							break;
+						case 1:
+							dirx = 1;
+							break;
+						case 3:
+							diry = 1;
+							break;
+						case 2:
+							diry = -1;
+							break;
+					}
+				}
                 if (is_valid_spot(en->x+dirx, en->y+diry) && !is_taken(en->x+dirx, en->y+diry, i)) {
                     en->x += dirx;
                     en->y += diry;
@@ -104,7 +115,16 @@ void *update_dwarfs(void *in) {
 	}
 }
 
+void find_target() {
+	for (int i = 0; i < n; ++i) {
+		if (entities[i]->c == 'd') {
+			target = i;
+		}
+	}
+}
+
 void spawn_demon() {
+	find_target();
     int x=0, y=0;
     switch (rand()%4) {
         case 0:
@@ -128,7 +148,7 @@ void spawn_demon() {
     entities[n-1]->y = y;
     entities[n-1]->c = 'H';
     entities[n-1]->mover = true;
-    entities[n-1]->hang_time = rand()%10+10;
+    entities[n-1]->hang_time = rand()%50+50;
 	demoned = true;
 }
 
@@ -175,7 +195,7 @@ void initialize_the_boys() {
 
 int main(int argc, char *argv[])
 {	
-	
+	srand(time(0));
 	initscr();// begin ncurses
 	noecho(); // don't echo inputted chars from any getch() calls
 	keypad(stdscr, TRUE); // read keypad input
