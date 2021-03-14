@@ -6,6 +6,7 @@
 
 void spawn_demon();
 void spawn_rocks();
+void spawn_dragon();
 void spawn_boy(int);
 void delete_boy(int index);
 void find_target();
@@ -27,6 +28,10 @@ int maxx = 100;
 int maxy = 100;
 int kigdug = 0; // how many times a dwarf has broken a rock
 bool demoned = false;
+bool dwarfspawn = false; // flags for checking if we've asked to spawn one of the things the user can spawn
+bool applespawn = false;
+bool eggspawn = false;
+int egg_time = 0;
 //int target; // assuming the number of demons = 1
 
 bool is_valid_spot(int x, int y) {
@@ -39,14 +44,16 @@ bool is_taken(int x1, int y1, int j){
 		if (entities[i]-> c == '#' && entities[j]->c == 'H') continue;
 		if (entities[i]-> c == 'a' && entities[j]->c == 'H') continue;
         if (entities[i]->x == x1 && entities[i]->y == y1) {
-			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd') || (entities[j]->c == 'd' && entities[i]->c == 'a')) {
+			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd') || (entities[j]->c == 'd' && entities[i]->c == 'a') || (entities[j]->c == 'D' && entities[i]->c == 'H')) {
 				entities[j]->target = NULL;
 				if (entities[j]->c == 'd' && entities[i]->c == 'a') {
-					kigdug++;
 					if (entities[i]->c == 'a') {
 						spawn_boy(i);
 					}
 				} 
+				if (entities[j]->c == 'd' && entities[i]->c == '#') {
+					kigdug++;
+				}
 				delete_boy(i);
 				return false;
 			} else { // else is not necessary here but it's nicer 
@@ -71,7 +78,7 @@ bool nearby_goodies(int x, int y, int j) {
 		if (entities[i]->c != '#' && entities[i]->c != 'a') continue;
 		int x1 = entities[i]->x - x;
 		int y1 = entities[i]->y - y;
-		if (x1*x1+y1*y1 <= 5) {
+		if (x1*x1+y1*y1 <= 10) {
 			entities[j]->target = entities[i];
 			return true;
 		}
@@ -80,9 +87,42 @@ bool nearby_goodies(int x, int y, int j) {
 }
 
 void *update_dwarfs(void *in) {
-    while(true) {	
+    while(true) {
 		WINDOW *win = (WINDOW *)in;
         wclear(win);
+		if (dwarfspawn) {
+			n++;
+			entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+    		entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
+			entities[n-1]->x = rand()%(maxx-1)+1;
+    		entities[n-1]->y = rand()%(maxy-1)+1;
+    		entities[n-1]->c = 'd';
+    		entities[n-1]->mover = true;
+			entities[n-1]->hang_time = 0;
+			dwarfspawn = false;
+		}
+		if (eggspawn) {
+			n++;
+			entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+    		entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
+			entities[n-1]->x = rand()%(maxx-1)+1;
+    		entities[n-1]->y = rand()%(maxy-1)+1;
+    		entities[n-1]->c = 'e';
+    		entities[n-1]->mover = false;
+			entities[n-1]->hang_time = 0;
+			eggspawn = false;
+		}
+		if (applespawn){
+			n++;
+			entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+    		entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
+			entities[n-1]->x = rand()%(maxx-1)+1;
+    		entities[n-1]->y = rand()%(maxy-1)+1;
+    		entities[n-1]->c = 'a';
+    		entities[n-1]->mover = false;
+			entities[n-1]->hang_time = 0;
+			applespawn = false;
+		}
         for (int i = 0; i < n; ++i) {
             struct entity *en = entities[i];
             if (en->mover) {
@@ -91,6 +131,9 @@ void *update_dwarfs(void *in) {
 					move_towards_target(i, &dirx, &diry);
 				} else {
 					if (en->c == 'H') {
+						find_target(i);
+						move_towards_target(i, &dirx, &diry);
+					} else if (en->c == 'D') { 
 						find_target(i);
 						move_towards_target(i, &dirx, &diry);
 					} else {
@@ -136,6 +179,9 @@ void *update_dwarfs(void *in) {
             spawn_demon();
 			spawn_rocks();
         }
+		if (egg_time == 3) {
+			spawn_dragon();
+		}
 	  	box(win, 0, 0);	
         wrefresh(win);
         usleep(250000);
@@ -151,7 +197,9 @@ void move_towards_target(int index, int *dirx, int *diry) {
 
 void find_target(int j) {
 	for (int i = 0; i < n; ++i) {
-		if (entities[i]->c == 'd') {
+		if (entities[i]->c == 'd' && entities[j]->c == 'H') {
+			entities[j]->target = entities[i];
+		} else if (entities[i]->c == 'H' && entities[j]->c == 'D'){
 			entities[j]->target = entities[i];
 		}
 	}
@@ -199,6 +247,24 @@ void spawn_rocks() {
 	}
 }
 
+void spawn_dragon() {
+	n++;
+	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+	entities[n-1] =  (struct entity *)malloc(sizeof(struct entity));
+    entities[n-1]->x = rand()%maxx;
+    entities[n-1]->y = rand()%maxy;
+	entities[n-1]->c = 'D';
+	entities[n-1]->mover = true;
+	entities[n-1]->hang_time = 0;
+	for (int i = 0; i < n; ++i){
+		if (entities[i]->c == 'e') {
+			delete_boy(i);
+			i--;
+			egg_time--;
+		}
+	}
+}
+
 void spawn_boy(int i) {
 	n++;
 	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
@@ -240,8 +306,7 @@ void initialize_the_boys() {
 }
 
 
-int main(int argc, char *argv[])
-{	
+int main(int argc, char *argv[]) {	
 	srand(time(0));
 	initscr();// begin ncurses
 	noecho(); // don't echo inputted chars from any getch() calls
@@ -253,11 +318,13 @@ int main(int argc, char *argv[])
 	int boyscount = 0;
 
 	printw("Dwarf Game");
-	printw("                                                              \n\n\n\n"); // leave a bunch of space for messages
-	printw(" a - make an apple\n\n");
-	printw(" b - make a new dwarf\n\n");
+	printw("\n\n\n\n"); 
+	printw(" a - buy apple: $10\n\n");
+	printw(" b - buy dwarf: $50\n\n");
 	printw(" d - current dwarf count\n\n");
+	printw(" e - buy eggshell: $100\n\n");
 	printw(" k - kg of rock moved\n\n");
+	printw(" w - check your wallet\n\n");
 	refresh();			/* Print it on to the real screen */
 	int startx, starty, width, height;
 
@@ -284,34 +351,40 @@ int main(int argc, char *argv[])
 		switch(ch) {
 			case 'a': // purchase apples, which allow dwarves to duplicate
 				move(1, 25);
-				printw("A new apple has been created.");
-				n++;
-				entities = realloc(entities, n*sizeof(struct entity *));
-				entities[n-1] =  (struct entity *)malloc(sizeof(struct entity));
- 		        entities[n-1]->x = rand()%maxx;
-		        entities[n-1]->y = rand()%maxy;
-        		entities[n-1]->c = 'a';
-        		entities[n-1]->mover = false;
+				if (kigdug < 10) {
+					printw("You don't have enough money for an apple.");
+					refresh();
+        			usleep(2500000); // give the reader time to see the message.
+					move(1, 25);
+					printw("                                         ");
+					break;
+				}
+				applespawn = true;
+				kigdug -= 10;
+				printw("A new apple has been created. (-$10)");
 				refresh();
         		usleep(2500000); // give the reader time to see the message.
 				move(1, 25);
-				printw("                             ");
+				printw("                                    ");
 				refresh();
 				break;
 			case 'b': // purchase new dwarves
 				move(1, 25);
-				printw("A new dwarf has been created.");
-				n++;
-				entities = realloc(entities, n*sizeof(struct entity *));
-				entities[n-1] =  (struct entity *)malloc(sizeof(struct entity));
- 		        entities[n-1]->x = rand()%maxx;
-		        entities[n-1]->y = rand()%maxy;
-        		entities[n-1]->c = 'd';
-        		entities[n-1]->mover = true;
+				if (kigdug  < 50) {
+					printw("You don't have enough money for a dwarf.");
+					refresh();
+        			usleep(2500000); // give the reader time to see the message.
+					move(1, 25);
+					printw("                                        ");
+					break;
+				}
+				dwarfspawn = true;
+				printw("A new dwarf has been created. (-$50)");
+				kigdug -= 50;
 				refresh();
         		usleep(2500000); // give the reader time to see the message.
 				move(1, 25);
-				printw("                             ");
+				printw("                                    ");
 				refresh();
 				break;
 			case 'd': // count your dwarves
@@ -336,6 +409,34 @@ int main(int argc, char *argv[])
         		usleep(2500000); // give the reader time to see the message.
 				move(1, 25);
 				printw("                                                  ");
+				refresh();
+				break;
+			case 'e':
+				move(1, 25);
+				if (kigdug < 100) {
+					printw("You don't have enough money for an eggshell.");
+					refresh();
+        			usleep(2500000); // give the reader time to see the message.
+					move(1, 25);
+					printw("                                            ");
+					break;
+				}
+				eggspawn = true;
+				kigdug -= 100;
+				egg_time++;
+				printw("An eggshell has been created (%d/3). (-$100)", egg_time);
+				refresh();
+				usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                                            ");
+				break;
+			case 'w':
+				move(1, 25);
+				printw("You have $%d to spend.", (kigdug));
+				refresh();
+				usleep(2500000); // give the reader time to see the message.
+				move(1, 25);
+				printw("                      ");
 				refresh();
 				break;
 		}
