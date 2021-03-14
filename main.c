@@ -5,9 +5,8 @@
 #include <pthread.h>
 
 void spawn_demon();
-
-WINDOW *create_newwin(int height, int width, int starty, int startx);
-void destroy_win(WINDOW *local_win);
+void spawn_rocks();
+void delete_boy(int index);
 
 struct entity {
     int x;
@@ -17,12 +16,12 @@ struct entity {
     int hang_time;
 };
 
-int n = 10;
+int n = 260;
 int nboys = 5;
 struct entity **entities;
 int maxx = 100;
 int maxy = 100;
-int kgdug = 0; // how many times a dwarf has broken a rock
+int kigdug = 0; // how many times a dwarf has broken a rock
 bool demoned = false;
 
 bool is_valid_spot(int x, int y) {
@@ -33,7 +32,15 @@ bool is_taken(int x1, int y1, int j){
     for (int i = 0; i < n; ++i) {
         if (j == i) continue;
         if (entities[i]->x == x1 && entities[i]->y == y1) {
-            return true;
+			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd')) {
+				delete_boy(i);
+				if (entities[j]->c == 'd') {
+					kigdug++;
+				}				
+				return false;
+			} else { // else is not necessary here but it's nicer 
+	            return true; 
+			}
         }
     }
     return false;
@@ -89,10 +96,11 @@ void *update_dwarfs(void *in) {
             entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
             entities[n-1] = (struct entity *)malloc(sizeof(struct entity));
             spawn_demon();
+			spawn_rocks();
         }
 	  	box(win, 0, 0);	
         wrefresh(win);
-        usleep(500000);
+        usleep(250000);
 	}
 }
 
@@ -124,6 +132,19 @@ void spawn_demon() {
 	demoned = true;
 }
 
+void spawn_rocks() {
+	for (int i = 0; i < 10; ++i){
+		n++;
+    	entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+    	entities[n-1] = (struct entity *)malloc(sizeof(struct entity));	
+		entities[n-1]->x = rand()%(maxx-1)+1;
+    	entities[n-1]->y = rand()%(maxy-1)+1;
+    	entities[n-1]->c = '#';
+    	entities[n-1]->mover = false;
+		entities[n-1]->hang_time = 0;
+	}
+}
+
 void initialize_the_boys() {
     for (int i = 0; i < nboys; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
@@ -133,14 +154,22 @@ void initialize_the_boys() {
         entities[i]->mover = true;
         entities[i]->hang_time = 0;
     }
-    for (int i = nboys; i < n; ++i) {
+    for (int i = nboys; i < 10; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = rand()%maxx;
-        entities[i]->y = rand()%maxy;
+        entities[i]->x = rand()%(maxx-1)+1;
+        entities[i]->y = rand()%(maxy-1)+1;
         entities[i]->c = 'a';
         entities[i]->mover = false;
         entities[i]->hang_time = 0;
     }
+	for (int i = 10; i < n; ++i){ // rocks
+		entities[i] = (struct entity *)malloc(sizeof(struct entity));
+        entities[i]->x = rand()%(maxx-1)+1;
+        entities[i]->y = rand()%(maxy-1)+1;
+        entities[i]->c = '#';
+        entities[i]->mover = false;
+        entities[i]->hang_time = 0;
+	}	
 }
 
 
@@ -235,7 +264,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'k': // see how many kg of stone your dwarves have moved in their mining adventures
 				move(1, 25);
-				printw("The dwarves have broken a total of %dkg of rock.", (kgdug*5));
+				printw("The dwarves have broken a total of %dkg of rock.", (kigdug*5));
 				refresh();
         		usleep(2500000); // give the reader time to see the message.
 				move(1, 25);
