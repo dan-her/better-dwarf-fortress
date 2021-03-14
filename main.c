@@ -163,7 +163,41 @@ void *update_dwarfs(void *in) {
                     en->y += diry;
                 }
             }
-            mvwaddch(win, en->y, en->x, en->c);
+            switch (en->c) {
+				case 'H':
+					wattron(win, COLOR_PAIR(1));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(1));
+					break;
+				case 'd':
+					wattron(win, COLOR_PAIR(2));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(2));
+					break;
+				case '#':
+					wattron(win, COLOR_PAIR(6));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(6));
+					break;
+				case 'a':
+					wattron(win, COLOR_PAIR(4));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(4));
+					break;
+				case 'D':
+					wattron(win, COLOR_PAIR(3));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(3));
+					break;
+				case 'e':
+					wattron(win, COLOR_PAIR(5));
+					mvwaddch(win, en->y, en->x, en->c);
+					wattroff(win, COLOR_PAIR(5));
+					break;
+				default:
+					mvwaddch(win, en->y, en->x, en->c);
+					break;
+			}
 			if (en->hang_time == 1) {
 				delete_boy(i);
 				i--;
@@ -316,6 +350,13 @@ int main(int argc, char *argv[]) {
 	int applepop = 0;
 	int kgpop = 0; // technically unused
 	int boyscount = 0;
+	start_color();
+	init_pair(1, COLOR_MAGENTA, COLOR_BLACK);
+	init_pair(2, COLOR_WHITE, COLOR_BLACK);
+	init_pair(3, COLOR_GREEN, COLOR_BLACK);
+	init_pair(4, COLOR_RED, COLOR_BLACK);
+	init_pair(5, COLOR_CYAN, COLOR_BLACK);
+	init_pair(6, COLOR_YELLOW, COLOR_BLACK);
 
 	printw("Dwarf Aquarium");
 	printw("\n\n\n\n"); 
