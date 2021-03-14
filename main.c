@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
 	int kgpop = 0; // technically unused
 	int boyscount = 0;
 
-	printw("Dwarf Game");
+	printw("Dwarf Aquarium");
 	printw("\n\n\n\n"); 
 	printw(" a - buy apple: $10\n\n");
 	printw(" b - buy dwarf: $50\n\n");
