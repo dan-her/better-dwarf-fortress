@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+void spawn_demon();
 
 WINDOW *create_newwin(int height, int width, int starty, int startx);
 void destroy_win(WINDOW *local_win);
@@ -13,6 +14,7 @@ struct entity {
     int y;
     char c;
     bool mover;
+    int hang_time;
 };
 
 int n = 10;
@@ -21,9 +23,10 @@ struct entity **entities;
 int maxx = 100;
 int maxy = 100;
 int kgdug = 0; // how many times a dwarf has broken a rock
+bool demoned = false;
 
 bool is_valid_spot(int x, int y) {
-    return x < maxx && x > -1 && y < maxy && y > -1;
+    return x < maxx-1 && x > 0 && y < maxy-1 && y > 0;
 }
 
 bool is_taken(int x1, int y1, int j){
@@ -34,6 +37,15 @@ bool is_taken(int x1, int y1, int j){
         }
     }
     return false;
+}
+
+void delete_boy(int index) {
+	n--;
+	free(entities[index]);
+	for (int i = index; i < n; ++i) {
+		entities[i] = entities[i+1];
+	}
+	entities = realloc(entities, sizeof(struct entity *)*n);
 }
 
 void *update_dwarfs(void *in) {
@@ -64,27 +76,70 @@ void *update_dwarfs(void *in) {
                 }
             }
             mvwaddch(win, en->y, en->x, en->c);
+			if (en->hang_time == 1) {
+				delete_boy(i);
+				i--;
+				demoned = false;
+			} else {
+				en->hang_time = en->hang_time != 0 ? en->hang_time-1 : 0;
+			}
+        }
+        if (rand()%50 == 0 && !demoned) {
+            n++;
+            entities = (struct entity **)realloc(entities, sizeof(struct entity *)*n);
+            entities[n-1] = (struct entity *)malloc(sizeof(struct entity));
+            spawn_demon();
         }
 	  	box(win, 0, 0);	
         wrefresh(win);
-        usleep(250000);
+        usleep(500000);
 	}
 }
 
+void spawn_demon() {
+    int x=0, y=0;
+    switch (rand()%4) {
+        case 0:
+            x = maxx/2;
+            y = maxy/2;
+            break;
+        case 1:
+            x = maxx/2;
+            y = maxy/2;
+            break;
+        case 2:
+            y = maxy/2;
+            x = maxx/2;
+            break;
+        case 3:
+            y = maxy/2;
+            x = maxx/2;
+            break;
+    }
+    entities[n-1]->x = x;
+    entities[n-1]->y = y;
+    entities[n-1]->c = 'H';
+    entities[n-1]->mover = true;
+    entities[n-1]->hang_time = rand()%10+10;
+	demoned = true;
+}
+
 void initialize_the_boys() {
-    for (int i = 0; i < nboys; ++i) { // dwarves
+    for (int i = 0; i < nboys; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
-        entities[i]->x = rand()%maxx;
-        entities[i]->y = rand()%maxy;
+        entities[i]->x = rand()%(maxx-1)+1;
+        entities[i]->y = rand()%(maxy-1)+1;
         entities[i]->c = 'd';
         entities[i]->mover = true;
+        entities[i]->hang_time = 0;
     }
-    for (int i = nboys; i < n; ++i) { // apples
+    for (int i = nboys; i < n; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
         entities[i]->x = rand()%maxx;
         entities[i]->y = rand()%maxy;
         entities[i]->c = 'a';
         entities[i]->mover = false;
+        entities[i]->hang_time = 0;
     }
 }
 
