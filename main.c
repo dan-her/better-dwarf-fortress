@@ -86,7 +86,7 @@ bool nearby_goodies(int x, int y, int j) {
 		int x1 = entities[i]->x - x;
 		int y1 = entities[i]->y - y;
 		int dist = x1*x1+y1*y1;
-		if (1) {
+		if (dist < 10) {
 			if (dist <= min) {
 				mindex = i;
 				min = dist;
