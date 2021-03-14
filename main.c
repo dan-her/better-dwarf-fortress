@@ -17,7 +17,7 @@ struct entity {
     char c;
     bool mover;
     int hang_time; // assuming the number of demons > 1
-	int target;
+	struct entity *target;
 };
 
 int n = 260;
@@ -40,7 +40,7 @@ bool is_taken(int x1, int y1, int j){
 		if (entities[i]-> c == 'a' && entities[j]->c == 'H') continue;
         if (entities[i]->x == x1 && entities[i]->y == y1) {
 			if ((entities[j]->c == 'd' && entities[i]->c == '#') || (entities[j]->c == 'H' && entities[i]->c == 'd') || (entities[j]->c == 'd' && entities[i]->c == 'a')) {
-				entities[j]->target = -1;
+				entities[j]->target = NULL;
 				if (entities[j]->c == 'd' && entities[i]->c == 'a') {
 					kigdug++;
 					if (entities[i]->c == 'a') {
@@ -72,7 +72,7 @@ bool nearby_goodies(int x, int y, int j) {
 		int x1 = entities[i]->x - x;
 		int y1 = entities[i]->y - y;
 		if (x1*x1+y1*y1 <= 5) {
-			entities[j]->target = i;
+			entities[j]->target = entities[i];
 			return true;
 		}
 	}
@@ -87,7 +87,7 @@ void *update_dwarfs(void *in) {
             struct entity *en = entities[i];
             if (en->mover) {
                 int dirx=0, diry=0;
-				if (en->target != -1) {
+				if (en->target != NULL) {
 					move_towards_target(i, &dirx, &diry);
 				} else {
 					if (en->c == 'H') {
@@ -144,15 +144,15 @@ void *update_dwarfs(void *in) {
 
 void move_towards_target(int index, int *dirx, int *diry) {
 	struct entity *en = entities[index];
-	if (en->target == -1) return;
-	*dirx = en->x >= entities[en->target]->x ? (en->x == entities[en->target]->x ? 0 : -1) : 1;
-	*diry = en->y >= entities[en->target]->y ? (en->y == entities[en->target]->y ? 0 : -1) : 1;
+	if (en->target == NULL) return;
+	*dirx = en->x >= en->target->x ? (en->x == en->target->x ? 0 : -1) : 1;
+	*diry = en->y >= en->target->y ? (en->y == en->target->y ? 0 : -1) : 1;
 } 
 
 void find_target(int j) {
 	for (int i = 0; i < n; ++i) {
 		if (entities[i]->c == 'd') {
-			entities[j]->target = i;
+			entities[j]->target = entities[i];
 		}
 	}
 }
@@ -208,7 +208,7 @@ void spawn_boy(int i) {
 	entities[n-1]->c = 'd';
 	entities[n-1]->mover = true;
 	entities[n-1]->hang_time = 0;
-	entities[i]->target = -1;
+	entities[i]->target = NULL;
 }
 
 void initialize_the_boys() {
@@ -219,7 +219,7 @@ void initialize_the_boys() {
         entities[i]->c = 'd';
         entities[i]->mover = true;
         entities[i]->hang_time = 0;
-		entities[i]->target = -1;
+		entities[i]->target = NULL;
     }
     for (int i = nboys; i < 10; ++i) {
         entities[i] = (struct entity *)malloc(sizeof(struct entity));
